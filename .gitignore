@@ -1,0 +1,11 @@
+# IDE files
+.idea/
+*.iml
+
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# OS files
+.DS_Store
+Thumbs.db
