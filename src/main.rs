@@ -2,6 +2,7 @@ mod database;
 mod handlers;
 mod models;
 
+use crate::models::Block;
 use crate::models::Transaction;
 
 fn main() {
@@ -15,6 +16,24 @@ fn main() {
         timestamp: 12345567,
     };
 
-    println!("Transaction created: {:?}", tx);
+    let tx2 = Transaction {
+        tx_id: 2,
+        sender: "0x2222".to_string(),
+        receiver: "0x222def".to_string(),
+        amount: 2000,
+        timestamp: 22222222,
+    };
+
+    let tx_vec = vec![tx, tx2];
+
+    let block = Block {
+        block_id: 1,
+        previous_block_hash: "zxd123".to_string(),
+        timestamp: 123,
+        tx_list: tx_vec,
+        block_hash: "hdhh1234".to_string(),
+    };
+
+    println!("Block created: {:?}", block);
     println!("Blockchain API is ready!");
 }
