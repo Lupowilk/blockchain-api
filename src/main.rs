@@ -3,6 +3,7 @@ mod handlers;
 mod models;
 
 use crate::models::Block;
+use crate::models::Blockchain;
 use crate::models::Transaction;
 
 fn main() {
@@ -36,4 +37,14 @@ fn main() {
 
     println!("Block created: {:?}", block);
     println!("Blockchain API is ready!");
+
+    let blockchain = Blockchain {
+        chain_of_blocks: vec![block],
+        total_tx: 2,
+        metadata: "I love Rust".to_string(),
+        current_block_height: 1,
+    };
+
+    println!("Block created: {:?}", blockchain);
+    println!("Blockchain is up and running!");
 }
