@@ -7,9 +7,11 @@ use axum::{
     Json, Router,
     routing::{get, post},
 };
-
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::sync::Mutex;
+
+static TRANSACTIONS: Mutex<Vec<Transaction>> = Mutex::new(Vec::new());
 
 async fn root() -> Json<serde_json::Value> {
     Json(json!(
@@ -22,30 +24,15 @@ async fn root() -> Json<serde_json::Value> {
 }
 
 async fn get_transactions() -> Json<serde_json::Value> {
-    // Create sample transactions
-    let tx1 = Transaction {
-        tx_id: 1,
-        sender: "0x123abc".to_string(),
-        receiver: "0x456def".to_string(),
-        amount: 1000,
-        timestamp: 1234567890,
-    };
-
-    let tx2 = Transaction {
-        tx_id: 2,
-        sender: "0x789ghi".to_string(),
-        receiver: "0x012jkl".to_string(),
-        amount: 2500,
-        timestamp: 1234567900,
-    };
-
+    let transaction = TRANSACTIONS.lock().unwrap().clone();
     Json(json!( {
-        "transactions": [tx1, tx2],
-        "count": 2
+        "transactions": transaction,
+        "count": transaction.len()
     }))
 }
 
 async fn create_transaction(Json(payload): Json<Transaction>) -> Json<serde_json::Value> {
+    TRANSACTIONS.lock().unwrap().push(payload.clone());
     Json(json!({
         "message":"Transaction created successfully",
         "transaction": payload
