@@ -2,13 +2,16 @@ mod database;
 mod handlers;
 mod models;
 
-use std::collections;
-
 use crate::models::Transaction;
 use axum::{
     Json, Router,
     routing::{get, post},
 };
+
+use futures_util::StreamExt;
+use mongodb::bson::doc;
+use std::collections;
+use tokio::task::id;
 
 use mongodb::{Client, Collection, Database};
 use serde::{Deserialize, Serialize};
@@ -24,19 +27,28 @@ async fn root() -> Json<serde_json::Value> {
     ))
 }
 
-// async fn get_transactions() -> Json<serde_json::Value> {
-//     let client = Client::with_uri_str("mongodb://localhost:27017")
-//         .await
-//         .unwrap();
-//     let database = client.database("blockchain");
-//     let collection = database.collection("transactions");
-//     let cursor = collection.find(None, None).await.unwrap();
+//A fucntion that returens all stored transacions
+async fn get_transactions() -> Json<serde_json::Value> {
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let database = client.database("blockchain");
+    let collection = database.collection("transactions");
+    let mut cursor = collection.find(doc! {}).await.unwrap();
+    let mut transaction_data: Vec<Transaction> = Vec::new();
 
-//     Json(json!( {
-//         "transactions": ,
-//         "count": t
-//     }))
-// }
+    while let Some(result) = cursor.next().await {
+        match result {
+            Ok(transaction) => transaction_data.push(transaction),
+            Err(_) => break,
+        }
+    }
+
+    Json(json!( {
+        "transactions":transaction_data,
+        "count": transaction_data.len()
+    }))
+}
 
 // A fucntion that takes a transaction from a user and saves it permanently to MongoDB
 async fn create_transaction(Json(payload): Json<Transaction>) -> Json<serde_json::Value> {
