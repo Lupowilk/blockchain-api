@@ -70,7 +70,7 @@ async fn main() {
     // Router
     let user_request = Router::new()
         .route("/", get(root))
-        // .route("/transactions", get(get_transactions))
+        .route("/transactions", get(get_transactions))
         .route("/transactions", post(create_transaction));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
