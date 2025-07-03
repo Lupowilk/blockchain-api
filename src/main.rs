@@ -2,19 +2,14 @@ mod database;
 mod handlers;
 mod models;
 
+use crate::handlers::transaction;
 use crate::models::Transaction;
 use axum::{
     Json, Router,
     routing::{get, post},
 };
 
-use futures_util::StreamExt;
-use mongodb::bson::doc;
-use std::collections;
-use tokio::task::id;
-
-use mongodb::{Client, Collection, Database};
-use serde::{Deserialize, Serialize};
+use mongodb::{Client, bson::doc};
 use serde_json::json;
 
 async fn root() -> Json<serde_json::Value> {
@@ -27,29 +22,6 @@ async fn root() -> Json<serde_json::Value> {
     ))
 }
 
-//A fucntion that returens all stored transacions
-async fn get_transactions() -> Json<serde_json::Value> {
-    let client = Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .unwrap();
-    let database = client.database("blockchain");
-    let collection = database.collection("transactions");
-    let mut cursor = collection.find(doc! {}).await.unwrap();
-    let mut transaction_data: Vec<Transaction> = Vec::new();
-
-    while let Some(result) = cursor.next().await {
-        match result {
-            Ok(transaction) => transaction_data.push(transaction),
-            Err(_) => break,
-        }
-    }
-
-    Json(json!( {
-        "transactions":transaction_data,
-        "count": transaction_data.len()
-    }))
-}
-
 // A fucntion that takes a transaction from a user and saves it permanently to MongoDB
 async fn create_transaction(Json(payload): Json<Transaction>) -> Json<serde_json::Value> {
     let client = Client::with_uri_str("mongodb://localhost:27017")
@@ -57,7 +29,7 @@ async fn create_transaction(Json(payload): Json<Transaction>) -> Json<serde_json
         .unwrap();
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
-    let new_transaction = collection.insert_one(payload.clone()).await.unwrap();
+    let _new_transaction = collection.insert_one(payload.clone()).await.unwrap();
 
     Json(json!({
         "message":"Transaction created successfully",
@@ -70,7 +42,7 @@ async fn main() {
     // Router
     let user_request = Router::new()
         .route("/", get(root))
-        .route("/transactions", get(get_transactions))
+        .route("/transactions", get(transaction::get_transactions))
         .route("/transactions", post(create_transaction));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
