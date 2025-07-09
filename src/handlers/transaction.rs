@@ -28,4 +28,8 @@ pub async fn get_transactions() -> Json<serde_json::Value> {
 }
 
 // New function for getting single transaction by ID
-pub get_transaction_by_ID
+pub async fn get_transaction_by_id() -> Json<serde_json::Value> {
+    Json(json!({
+        "message": "Hello from get_transaction_by_id"
+    }))
+}

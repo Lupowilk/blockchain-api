@@ -43,7 +43,11 @@ async fn main() {
     let user_request = Router::new()
         .route("/", get(root))
         .route("/transactions", get(transaction::get_transactions))
-        .route("/transactions", post(create_transaction));
+        .route("/transactions", post(create_transaction))
+        .route(
+            "/transactions/{id}",
+            get(transaction::get_transaction_by_id),
+        );
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
