@@ -1,5 +1,6 @@
 use crate::models::Transaction;
 use axum::Json;
+use axum::extract::Path;
 use futures_util::StreamExt;
 use mongodb::{Client, bson::doc};
 use serde_json::json;
@@ -28,8 +29,9 @@ pub async fn get_transactions() -> Json<serde_json::Value> {
 }
 
 // New function for getting single transaction by ID
-pub async fn get_transaction_by_id() -> Json<serde_json::Value> {
+pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
     Json(json!({
-        "message": "Hello from get_transaction_by_id"
+        "message": "You requested transaction ID",
+        "id": id
     }))
 }
