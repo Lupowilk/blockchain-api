@@ -33,9 +33,14 @@ pub async fn get_transactions() -> Json<serde_json::Value> {
 pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
     // Convert string to ObjectId
     let object_id = ObjectId::parse_str(id).unwrap();
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let database = client.database("blockchain");
+    let collection = database.collection("transactions");
+    let mut transaction_by_id = collection.find_one(doc! {"_id": object_id}).await.unwrap();
 
     Json(json!({
-        "message": "You requested transaction ID",
-        "id": object_id
+        "transaction": transaction_by_id
     }))
 }
