@@ -6,7 +6,7 @@ use mongodb::bson::oid::ObjectId;
 use mongodb::{Client, bson::doc};
 use serde_json::json;
 
-//A fucntion that returens all stored transacions
+//A function that returens all stored transacions
 pub async fn get_transactions() -> Json<serde_json::Value> {
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
@@ -37,7 +37,7 @@ pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::V
         .await
         .unwrap();
     let database = client.database("blockchain");
-    let collection = database.collection("transactions");
+    let collection: mongodb::Collection<Transaction> = database.collection("transactions");
     let mut transaction_by_id = collection.find_one(doc! {"_id": object_id}).await.unwrap();
 
     Json(json!({
