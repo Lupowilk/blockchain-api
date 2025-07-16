@@ -32,13 +32,28 @@ pub async fn get_transactions() -> Json<serde_json::Value> {
 // New function for getting single transaction by ID
 pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
     // Convert string to ObjectId
-    let object_id = ObjectId::parse_str(id).unwrap();
+    let object_id = match ObjectId::parse_str(id) {
+        Ok(id) => id, // Succces - use the ObjectID
+        Err(_) => {
+            return Json(json!({
+                "error": "HTTP 400 -invalid ID format"
+            }));
+        }
+    };
+
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
         .unwrap();
     let database = client.database("blockchain");
     let collection: mongodb::Collection<Transaction> = database.collection("transactions");
-    let mut transaction_by_id = collection.find_one(doc! {"_id": object_id}).await.unwrap();
+    let transaction_by_id = match collection.find_one(doc! {"_id": object_id}).await.unwrap() {
+        Some(transaction) => transaction,
+        None => {
+            return Json(json!({
+                "error": "HTTP 404 - no transaction found"
+            }));
+        }
+    };
 
     Json(json!({
         "transaction": transaction_by_id
