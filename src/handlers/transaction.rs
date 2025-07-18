@@ -5,6 +5,7 @@ use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
 use mongodb::{Client, bson::doc};
 use serde_json::json;
+use tokio::task::Id;
 
 //A function that returens all stored transacions
 pub async fn get_transactions() -> Json<serde_json::Value> {
@@ -58,4 +59,16 @@ pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::V
     Json(json!({
         "transaction": transaction_by_id
     }))
+}
+
+pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
+    let object_id = match ObjectId::parse_str(id) {
+        Ok(id) => id,
+        Err(_) => {
+            return Json(json!({
+                "error": "Invalid ID format, please provide this format: 685ba45cb808dcc5709476a2"
+            }));
+        }
+    };
+    Json(json!({"message": "TODO: implement delete logic"}))
 }
