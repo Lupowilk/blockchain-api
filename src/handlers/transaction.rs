@@ -3,6 +3,7 @@ use axum::Json;
 use axum::extract::Path;
 use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::raw::RawArrayIter;
 use mongodb::{Client, bson::doc};
 use serde_json::json;
 use tokio::task::Id;
@@ -70,5 +71,12 @@ pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json
             }));
         }
     };
+
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let database = client.database("blockchain");
+    let collection = database.collection("transactions");
+
     Json(json!({"message": "TODO: implement delete logic"}))
 }
