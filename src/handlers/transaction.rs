@@ -76,7 +76,7 @@ pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json
         .await
         .unwrap();
     let database = client.database("blockchain");
-    let collection = database.collection("transactions");
+    let collection = database.collection::<Transaction>("transactions");
 
     Json(json!({"message": "TODO: implement delete logic"}))
 }
