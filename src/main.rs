@@ -6,7 +6,7 @@ use crate::handlers::transaction;
 use crate::models::Transaction;
 use axum::{
     Json, Router,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 
 use mongodb::{Client, bson::doc};
@@ -47,6 +47,10 @@ async fn main() {
         .route(
             "/transactions/{id}",
             get(transaction::get_transaction_by_id),
+        )
+        .route(
+            "/transactions/{id}",
+            delete(transaction::delete_transaction_by_id),
         );
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
