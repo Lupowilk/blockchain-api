@@ -3,8 +3,10 @@ use axum::Json;
 use axum::extract::Path;
 use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::raw::RawArrayIter;
 use mongodb::{Client, bson::doc};
 use serde_json::json;
+use tokio::task::Id;
 
 //A function that returens all stored transacions
 pub async fn get_transactions() -> Json<serde_json::Value> {
@@ -58,4 +60,30 @@ pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::V
     Json(json!({
         "transaction": transaction_by_id
     }))
+}
+
+pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
+    let object_id = match ObjectId::parse_str(id) {
+        Ok(id) => id,
+        Err(_) => {
+            return Json(json!({
+                "error": "Invalid ID format, please provide this format: 685ba45cb808dcc5709476a2"
+            }));
+        }
+    };
+
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let database = client.database("blockchain");
+    let collection = database.collection::<Transaction>("transactions");
+    let transaction_id = collection.delete_one(doc! {"_id":object_id}).await.unwrap();
+
+    if transaction_id.deleted_count == 1 {
+        Json(json!({"message": "HTTP 204 No content. The trasaction was removed succesfully."}))
+    } else {
+        Json(
+            json!({"message": "HTTP 404 there is an error. The trasaction was not removed succesfully."}),
+        )
+    }
 }
