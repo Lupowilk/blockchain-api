@@ -78,6 +78,12 @@ pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json
     let database = client.database("blockchain");
     let collection = database.collection::<Transaction>("transactions");
     let transaction_id = collection.delete_one(doc! {"_id":object_id}).await.unwrap();
-    println!("Deleted count: {}", transaction_id.deleted_count);
-    Json(json!({"message": "TODO: handle result"}))
+
+    if transaction_id.deleted_count == 1 {
+        Json(json!({"message": "HTTP 204 No content. The trasaction was removed succesfully."}))
+    } else {
+        Json(
+            json!({"message": "HTTP 404 there is an error. The trasaction was not removed succesfully."}),
+        )
+    }
 }
