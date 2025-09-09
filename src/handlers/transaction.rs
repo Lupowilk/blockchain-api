@@ -87,3 +87,18 @@ pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json
         )
     }
 }
+
+// A function that takes a transaction from a user and saves it permanently to MongoDB
+pub async fn create_transaction(Json(payload): Json<Transaction>) -> Json<serde_json::Value> {
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let database = client.database("blockchain");
+    let collection = database.collection("transactions");
+    let _new_transaction = collection.insert_one(payload.clone()).await.unwrap();
+
+    Json(json!({
+        "message":"Transaction created successfully",
+        "transaction": payload
+    }))
+}
