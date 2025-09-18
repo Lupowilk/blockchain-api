@@ -1,12 +1,90 @@
-use crate::models::Transaction;
+use crate::models::transaction::{CreateTransactionInput, Transaction};
 use axum::Json;
 use axum::extract::Path;
+use axum::http::StatusCode;
+use futures_util::future::OrElse;
 use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::raw::RawArrayIter;
 use mongodb::{Client, bson::doc};
+use rand::Rng;
 use serde_json::json;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task::Id;
+use uuid::timestamp;
+
+// A function that takes a transaction from a user and saves it permanently to MongoDB
+pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> (StatusCode, Json<serde_json::Value>) {
+
+    // Amount validation
+    if payload.amount == 0 {
+         return (StatusCode::BAD_REQUEST, Json(json!({
+             "message":"Amount must be greater than 0"
+         })))
+    }
+
+    // Sender validation
+    if payload.sender.trim().is_empty() == true {
+        return (StatusCode::BAD_REQUEST, Json(json!({
+            "message":"You must provide the sender address"
+        })))
+    }
+
+    // Receiver validation
+    if payload.receiver.trim().is_empty() == true {
+        return (StatusCode::BAD_REQUEST, Json(json!({
+            "message": "Please provide a receiver address"
+        })))
+    }
+
+    // Same address validation
+    if payload.sender.trim() == payload.receiver.trim() {
+        return (StatusCode::BAD_REQUEST, Json(json!({
+            "message": "Cannot send to yourself"
+        })))
+    }
+
+
+
+
+
+    // This code only runs if amount is not 0
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let database = client.database("blockchain");
+    let collection = database.collection("transactions");
+
+    // 1. Generate system fields
+    let id = ObjectId::new();
+    let tx_timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let random_component = rand::thread_rng().gen_range(0..1000);
+    let tx_id = tx_timestamp * 1000 + random_component;
+
+    // 2. Build the Transaction
+    let transaction_to_save = Transaction {
+        id: id,
+        tx_id: tx_id,
+        sender: payload.sender.clone(),
+        receiver: payload.receiver.clone(),
+        amount: payload.amount,
+        timestamp: tx_timestamp,
+    };
+    // 3. Insert the biult transaction
+    collection
+        .insert_one(transaction_to_save.clone())
+        .await
+        .unwrap();
+
+    (StatusCode::OK, Json(json!({
+        "message":"Transaction created successfully",
+        "transaction": payload
+    })))
+}
+
 
 //A function that returens all stored transacions
 pub async fn get_transactions() -> Json<serde_json::Value> {
@@ -71,7 +149,6 @@ pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json
             }));
         }
     };
-
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
         .unwrap();

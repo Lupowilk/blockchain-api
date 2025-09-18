@@ -22,28 +22,13 @@ async fn root() -> Json<serde_json::Value> {
     ))
 }
 
-// A fucntion that takes a transaction from a user and saves it permanently to MongoDB
-async fn create_transaction(Json(payload): Json<Transaction>) -> Json<serde_json::Value> {
-    let client = Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .unwrap();
-    let database = client.database("blockchain");
-    let collection = database.collection("transactions");
-    let _new_transaction = collection.insert_one(payload.clone()).await.unwrap();
-
-    Json(json!({
-        "message":"Transaction created successfully",
-        "transaction": payload
-    }))
-}
-
 #[tokio::main]
 async fn main() {
     // Router
     let user_request = Router::new()
         .route("/", get(root))
         .route("/transactions", get(transaction::get_transactions))
-        .route("/transactions", post(create_transaction))
+        .route("/transactions", post(transaction::create_transaction))
         .route(
             "/transactions/{id}",
             get(transaction::get_transaction_by_id),

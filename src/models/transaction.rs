@@ -11,3 +11,10 @@ pub struct Transaction {
     pub amount: u64,
     pub timestamp: u64,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CreateTransactionInput {
+    pub sender: String,
+    pub receiver: String,
+    pub amount: u64,
+}
