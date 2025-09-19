@@ -43,11 +43,6 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
             "message": "Cannot send to yourself"
         })))
     }
-
-
-
-
-
     // This code only runs if amount is not 0
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
@@ -86,8 +81,9 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
 }
 
 
+
 //A function that returens all stored transacions
-pub async fn get_transactions() -> Json<serde_json::Value> {
+pub async fn get_transactions() -> (StatusCode, Json<serde_json::Value>) {
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
         .unwrap();
@@ -103,24 +99,25 @@ pub async fn get_transactions() -> Json<serde_json::Value> {
         }
     }
 
-    Json(json!( {
+    (StatusCode::OK, Json(json!( {
         "transactions":transaction_data,
         "count": transaction_data.len()
-    }))
+    })))
 }
 
-// New function for getting single transaction by ID
-pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
-    // Convert string to ObjectId
+
+
+
+// A function that returns a trasaction based on ID.
+pub async fn get_transaction_by_id(Path(id): Path<String>) -> (StatusCode, Json<serde_json::Value>) {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id, // Succces - use the ObjectID
         Err(_) => {
-            return Json(json!({
-                "error": "HTTP 400 -invalid ID format"
-            }));
+            return (StatusCode::BAD_REQUEST, Json(json!({
+                "error": "Invalid ID format"
+            })));
         }
     };
-
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
         .unwrap();
@@ -129,24 +126,25 @@ pub async fn get_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::V
     let transaction_by_id = match collection.find_one(doc! {"_id": object_id}).await.unwrap() {
         Some(transaction) => transaction,
         None => {
-            return Json(json!({
-                "error": "HTTP 404 - no transaction found"
-            }));
+            return (StatusCode::NOT_FOUND, Json(json!({
+                "error": "Transaction not found"
+            })));
         }
     };
 
-    Json(json!({
+    (StatusCode::OK, Json(json!({
         "transaction": transaction_by_id
-    }))
+    })))
 }
 
-pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json::Value> {
+//A function that delets a transaction by ID.
+pub async fn delete_transaction_by_id(Path(id): Path<String>) -> (StatusCode, Json<serde_json::Value>) {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id,
         Err(_) => {
-            return Json(json!({
+            return (StatusCode::BAD_REQUEST, Json(json!({
                 "error": "Invalid ID format, please provide this format: 685ba45cb808dcc5709476a2"
-            }));
+            })));
         }
     };
     let client = Client::with_uri_str("mongodb://localhost:27017")
@@ -157,10 +155,8 @@ pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Json<serde_json
     let transaction_id = collection.delete_one(doc! {"_id":object_id}).await.unwrap();
 
     if transaction_id.deleted_count == 1 {
-        Json(json!({"message": "HTTP 204 No content. The trasaction was removed succesfully."}))
+        (StatusCode::OK, Json(json!({"message": "Transaction deleted succesfully."})))
     } else {
-        Json(
-            json!({"message": "HTTP 404 there is an error. The trasaction was not removed succesfully."}),
-        )
+        (StatusCode::NOT_FOUND, Json(json!({"message": "Transaction not found."})))
     }
 }
