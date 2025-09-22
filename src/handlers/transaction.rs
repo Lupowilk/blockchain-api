@@ -13,6 +13,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task::Id;
 use uuid::timestamp;
 
+pub enum AppError {
+    Database(String),
+    NotFound(String),
+    BadRequest(String),
+}
+
 // A function that takes a transaction from a user and saves it permanently to MongoDB
 pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> (StatusCode, Json<serde_json::Value>) {
 
@@ -83,13 +89,14 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
 
 
 //A function that returens all stored transacions
-pub async fn get_transactions() -> (StatusCode, Json<serde_json::Value>) {
+pub async fn get_transactions() -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
-        .unwrap();
+        .map_err(|e| AppError::Database(format!("Failed to connect to MongoDB: {}", e)))?;
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
-    let mut cursor = collection.find(doc! {}).await.unwrap();
+    let mut cursor = collection.find(doc! {}).await
+        .map_err(|e| AppError::Database(format!("Failed to query transaction: {}", e)))?;
     let mut transaction_data: Vec<Transaction> = Vec::new();
 
     while let Some(result) = cursor.next().await {
@@ -99,10 +106,10 @@ pub async fn get_transactions() -> (StatusCode, Json<serde_json::Value>) {
         }
     }
 
-    (StatusCode::OK, Json(json!( {
+    Ok((StatusCode::OK, Json(json!( {
         "transactions":transaction_data,
         "count": transaction_data.len()
-    })))
+    }))))
 }
 
 
