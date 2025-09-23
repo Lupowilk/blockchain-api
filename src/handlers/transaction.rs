@@ -2,6 +2,7 @@ use crate::models::transaction::{CreateTransactionInput, Transaction};
 use axum::Json;
 use axum::extract::Path;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use futures_util::future::OrElse;
 use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
@@ -13,10 +14,28 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task::Id;
 use uuid::timestamp;
 
+//Enum for handling errors
 pub enum AppError {
     Database(String),
     NotFound(String),
     BadRequest(String),
+}
+
+//IntoResponse implementation for AppError
+impl IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            AppError::Database(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": msg}))).into_response()
+            }
+            AppError::NotFound(msg) => {
+                (StatusCode::NOT_FOUND, Json(json!({"message": msg}))).into_response()
+            }
+            AppError::BadRequest(msg) => {
+                (StatusCode::BAD_REQUEST, Json(json!({"message": msg}))).into_response()
+            }
+        }
+    }
 }
 
 // A function that takes a transaction from a user and saves it permanently to MongoDB
@@ -116,32 +135,29 @@ pub async fn get_transactions() -> Result<(StatusCode, Json<serde_json::Value>),
 
 
 // A function that returns a trasaction based on ID.
-pub async fn get_transaction_by_id(Path(id): Path<String>) -> (StatusCode, Json<serde_json::Value>) {
+pub async fn get_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id, // Succces - use the ObjectID
         Err(_) => {
-            return (StatusCode::BAD_REQUEST, Json(json!({
-                "error": "Invalid ID format"
-            })));
+            return Err(AppError::BadRequest("Invalid ID format".to_string()));
         }
     };
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
-        .unwrap();
+        .map_err(|e| AppError::Database(format!("Failed to conncet to MongoDB: {}", e)))?;
     let database = client.database("blockchain");
     let collection: mongodb::Collection<Transaction> = database.collection("transactions");
-    let transaction_by_id = match collection.find_one(doc! {"_id": object_id}).await.unwrap() {
+    let transaction_by_id = match collection.find_one(doc! {"_id": object_id}).await
+        .map_err(|e| AppError::Database(format!("Failed to query transaction: {}", e)))? {
         Some(transaction) => transaction,
         None => {
-            return (StatusCode::NOT_FOUND, Json(json!({
-                "error": "Transaction not found"
-            })));
+            return Err(AppError::NotFound("Transaction not found".to_string()));
         }
     };
 
-    (StatusCode::OK, Json(json!({
+    Ok ((StatusCode::OK, Json(json!({
         "transaction": transaction_by_id
-    })))
+    }))))
 }
 
 //A function that delets a transaction by ID.
