@@ -10,6 +10,7 @@ use mongodb::bson::raw::RawArrayIter;
 use mongodb::{Client, bson::doc};
 use rand::Rng;
 use serde_json::json;
+use std::fmt::format;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task::Id;
 use uuid::timestamp;
@@ -161,25 +162,24 @@ pub async fn get_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode
 }
 
 //A function that delets a transaction by ID.
-pub async fn delete_transaction_by_id(Path(id): Path<String>) -> (StatusCode, Json<serde_json::Value>) {
+pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id,
         Err(_) => {
-            return (StatusCode::BAD_REQUEST, Json(json!({
-                "error": "Invalid ID format, please provide this format: 685ba45cb808dcc5709476a2"
-            })));
+            return Err(AppError::BadRequest("Invalid ID format, please provide this format: 685ba45cb808dcc5709476a2".to_string()));
         }
     };
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
-        .unwrap();
+        .map_err(|e| AppError::Database(format!("Failed to connect to MongoDB: {}", e)))?;
     let database = client.database("blockchain");
     let collection = database.collection::<Transaction>("transactions");
-    let transaction_id = collection.delete_one(doc! {"_id":object_id}).await.unwrap();
+    let transaction_id = collection.delete_one(doc! {"_id":object_id}).await
+        .map_err(|e| AppError::Database(format!("Failed to delete transaction: {}", e)))?;
 
     if transaction_id.deleted_count == 1 {
-        (StatusCode::OK, Json(json!({"message": "Transaction deleted succesfully."})))
+        Ok((StatusCode::OK, Json(json!({"message": "Transaction deleted succesfully."}))))
     } else {
-        (StatusCode::NOT_FOUND, Json(json!({"message": "Transaction not found."})))
+        Err(AppError::NotFound("Transaction not found.".to_string()))
     }
 }
