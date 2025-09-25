@@ -3,17 +3,12 @@ use axum::Json;
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use futures_util::future::OrElse;
 use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::raw::RawArrayIter;
 use mongodb::{Client, bson::doc};
 use rand::Rng;
 use serde_json::json;
-use std::fmt::format;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::task::Id;
-use uuid::timestamp;
 
 //Enum for handling errors
 pub enum AppError {
@@ -40,39 +35,31 @@ impl IntoResponse for AppError {
 }
 
 // A function that takes a transaction from a user and saves it permanently to MongoDB
-pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> (StatusCode, Json<serde_json::Value>) {
+pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
 
     // Amount validation
     if payload.amount == 0 {
-         return (StatusCode::BAD_REQUEST, Json(json!({
-             "message":"Amount must be greater than 0"
-         })))
+         return Err(AppError::BadRequest("Amount must be greater than 0".to_string()));
     }
 
     // Sender validation
     if payload.sender.trim().is_empty() == true {
-        return (StatusCode::BAD_REQUEST, Json(json!({
-            "message":"You must provide the sender address"
-        })))
+        return Err(AppError::BadRequest("You must provide the sender address".to_string()));
     }
 
     // Receiver validation
     if payload.receiver.trim().is_empty() == true {
-        return (StatusCode::BAD_REQUEST, Json(json!({
-            "message": "Please provide a receiver address"
-        })))
+        return Err(AppError::BadRequest("Please provide a receiver address".to_string()));
     }
 
     // Same address validation
     if payload.sender.trim() == payload.receiver.trim() {
-        return (StatusCode::BAD_REQUEST, Json(json!({
-            "message": "Cannot send to yourself"
-        })))
+        return Err(AppError::BadRequest("Cannot send to yourself".to_string()));
     }
     // This code only runs if amount is not 0
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
-        .unwrap();
+        .map_err(|e| AppError::Database(format!("Failed to connect to Databse: {}", e)))?;
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
 
@@ -80,7 +67,7 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
     let id = ObjectId::new();
     let tx_timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .map_err(|e| AppError::Database(format!("System clock error: {}",e)))?
         .as_secs();
     let random_component = rand::thread_rng().gen_range(0..1000);
     let tx_id = tx_timestamp * 1000 + random_component;
@@ -98,15 +85,13 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
     collection
         .insert_one(transaction_to_save.clone())
         .await
-        .unwrap();
+        .map_err(|e| AppError::Database(format!("Failed to save transaction: {}", e)))?;
 
-    (StatusCode::OK, Json(json!({
+    Ok((StatusCode::OK, Json(json!({
         "message":"Transaction created successfully",
         "transaction": payload
-    })))
+    }))))
 }
-
-
 
 //A function that returens all stored transacions
 pub async fn get_transactions() -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
@@ -131,9 +116,6 @@ pub async fn get_transactions() -> Result<(StatusCode, Json<serde_json::Value>),
         "count": transaction_data.len()
     }))))
 }
-
-
-
 
 // A function that returns a trasaction based on ID.
 pub async fn get_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
