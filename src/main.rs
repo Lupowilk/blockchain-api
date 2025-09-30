@@ -31,7 +31,7 @@ async fn main() {
 
     // Router setup
     let user_request = Router::new()
-        .with_state(client) // stores the client in Axum's state manager
+        // stores the client in Axum's state manager
         .route("/", get(root))
         .route("/transactions", get(transaction::get_transactions))
         .route("/transactions", post(transaction::create_transaction))
@@ -42,13 +42,12 @@ async fn main() {
         .route(
             "/transactions/{id}",
             delete(transaction::delete_transaction_by_id),
-        );
+        )
+        .with_state(client); // Changes Router<Client> to Router<>, stores the client in Axum's state manager
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
     //Start the server
     println!("Server starting on http://localhost:3000");
-    axum::serve(listener, user_request.into_service())
-        .await
-        .unwrap();
+    axum::serve(listener, user_request).await.unwrap();
 }
