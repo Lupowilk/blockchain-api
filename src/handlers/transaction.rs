@@ -1,6 +1,6 @@
 use crate::models::transaction::{CreateTransactionInput, Transaction};
 use axum::Json;
-use axum::extract::Path;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use futures_util::StreamExt;
@@ -35,7 +35,7 @@ impl IntoResponse for AppError {
 }
 
 // A function that takes a transaction from a user and saves it permanently to MongoDB
-pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+pub async fn create_transaction(State(client): State<Client>, Json(payload): Json<CreateTransactionInput>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
 
     // Amount validation
     if payload.amount == 0 {
@@ -57,9 +57,6 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
         return Err(AppError::BadRequest("Cannot send to yourself".to_string()));
     }
     // This code only runs if amount is not 0
-    let client = Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to connect to Databse: {}", e)))?;
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
 
@@ -94,10 +91,7 @@ pub async fn create_transaction(Json(payload): Json<CreateTransactionInput>) -> 
 }
 
 //A function that returens all stored transacions
-pub async fn get_transactions() -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
-    let client = Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to connect to MongoDB: {}", e)))?;
+pub async fn get_transactions(State(client): State<Client>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
     let mut cursor = collection.find(doc! {}).await
@@ -118,16 +112,13 @@ pub async fn get_transactions() -> Result<(StatusCode, Json<serde_json::Value>),
 }
 
 // A function that returns a trasaction based on ID.
-pub async fn get_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+pub async fn get_transaction_by_id(State(client): State<Client>, Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id, // Succces - use the ObjectID
         Err(_) => {
             return Err(AppError::BadRequest("Invalid ID format".to_string()));
         }
     };
-    let client = Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to conncet to MongoDB: {}", e)))?;
     let database = client.database("blockchain");
     let collection: mongodb::Collection<Transaction> = database.collection("transactions");
     let transaction_by_id = match collection.find_one(doc! {"_id": object_id}).await
@@ -144,16 +135,13 @@ pub async fn get_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode
 }
 
 //A function that delets a transaction by ID.
-pub async fn delete_transaction_by_id(Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+pub async fn delete_transaction_by_id(State(client): State<Client>, Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id,
         Err(_) => {
             return Err(AppError::BadRequest("Invalid ID format, please provide this format: 685ba45cb808dcc5709476a2".to_string()));
         }
     };
-    let client = Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to connect to MongoDB: {}", e)))?;
     let database = client.database("blockchain");
     let collection = database.collection::<Transaction>("transactions");
     let transaction_id = collection.delete_one(doc! {"_id":object_id}).await

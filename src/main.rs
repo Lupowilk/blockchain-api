@@ -24,8 +24,14 @@ async fn root() -> Json<serde_json::Value> {
 
 #[tokio::main]
 async fn main() {
-    // Router
+    // Client sdetup
+    let client = Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .expect("Failed to connect to MongoDB");
+
+    // Router setup
     let user_request = Router::new()
+        .with_state(client) // stores the client in Axum's state manager
         .route("/", get(root))
         .route("/transactions", get(transaction::get_transactions))
         .route("/transactions", post(transaction::create_transaction))
@@ -42,5 +48,7 @@ async fn main() {
 
     //Start the server
     println!("Server starting on http://localhost:3000");
-    axum::serve(listener, user_request).await.unwrap();
+    axum::serve(listener, user_request.into_service())
+        .await
+        .unwrap();
 }
