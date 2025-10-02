@@ -15,10 +15,17 @@ pub struct TransactionQuery {
 impl TransactionQuery {
     /// Get the limit with default value and maximum cap
     pub fn get_limit(&self) -> u64 {
-        //todo
+        match self.limit {
+            Some(limit_value) if limit_value > 50 => 50,
+            Some(limit_value) => limit_value,
+            None => 10,
+        }
     }
     // Get the offset with default value
     pub fn get_offset(&self) -> u64 {
-        //todo
+        match self.offset {
+            Some(offset_value) => offset_value,
+            None => 0,
+        }
     }
 }
