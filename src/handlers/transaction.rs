@@ -1,11 +1,13 @@
 use crate::models::transaction::{CreateTransactionInput, Transaction};
+use crate::models::TransactionQuery;
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use futures_util::StreamExt;
 use mongodb::bson::oid::ObjectId;
 use mongodb::{Client, bson::doc};
+use mongodb::options::FindOptions;
 use rand::Rng;
 use serde_json::json;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -91,11 +93,27 @@ pub async fn create_transaction(State(client): State<Client>, Json(payload): Jso
 }
 
 //A function that returens all stored transacions
-pub async fn get_transactions(State(client): State<Client>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+pub async fn get_transactions(State(client): State<Client>, Query(params): Query<TransactionQuery>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
-    let mut cursor = collection.find(doc! {}).await
+
+    // Step 1: Get limit and offset
+    let limit = params.get_limit();
+    let offset = params.get_offset();
+
+    // Step 2: Build FindOptions
+    let find_options = FindOptions::builder()
+        .limit(limit as i64)
+        .skip(offset)
+        .build();
+
+    // Step 3: Use them in find
+    let mut cursor = collection
+        .find(doc! {})
+        .with_options(find_options)
+        .await
         .map_err(|e| AppError::Database(format!("Failed to query transaction: {}", e)))?;
+
     let mut transaction_data: Vec<Transaction> = Vec::new();
 
     while let Some(result) = cursor.next().await {
