@@ -5,7 +5,7 @@ pub struct TransactionQuery {
     //Filtering parameters, all optional
     pub sender: Option<String>,
     pub receiver: Option<String>,
-    pub amount: Option<u64>,
+    pub amount: Option<i64>,
 
     //Pagination params, all optional
     pub limit: Option<u64>,

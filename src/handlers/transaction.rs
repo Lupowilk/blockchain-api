@@ -97,9 +97,23 @@ pub async fn get_transactions(State(client): State<Client>, Query(params): Query
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
 
-    // Step 1: Get limit and offset
+    // Step 1: Get limit, offset and filters
     let limit = params.get_limit();
     let offset = params.get_offset();
+    let mut filter = doc! {};
+
+    if let Some(sender) = &params.sender {
+            filter.insert("sender", sender);
+    }
+
+    if let Some(receiver) = &params.receiver {
+            filter.insert("receiver", receiver);
+    }
+
+    if let Some(amount) = &params.amount {
+            filter.insert("amount", amount);
+    }
+
 
     // Step 2: Build FindOptions
     let find_options = FindOptions::builder()
@@ -109,7 +123,7 @@ pub async fn get_transactions(State(client): State<Client>, Query(params): Query
 
     // Step 3: Use them in find
     let mut cursor = collection
-        .find(doc! {})
+        .find(filter)
         .with_options(find_options)
         .await
         .map_err(|e| AppError::Database(format!("Failed to query transaction: {}", e)))?;
