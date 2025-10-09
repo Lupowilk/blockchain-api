@@ -9,7 +9,7 @@ use axum::{
     routing::{delete, get, post},
 };
 
-use mongodb::{Client, bson::doc};
+use mongodb::{Client, bson::doc, IndexModel};
 use serde_json::json;
 
 async fn root() -> Json<serde_json::Value> {
@@ -28,6 +28,60 @@ async fn main() {
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
         .expect("Failed to connect to MongoDB");
+
+
+    // Indexes for sender, receiver, amount and timestamps
+    let db = client.database("blockchain");
+    let collection = db.collection::<Transaction>("transactions");
+
+    // sender
+    let sender_index = IndexModel::builder()
+        .keys(doc! {"sender": 1})
+        .build();
+
+    collection
+        .create_index(sender_index)
+        .await
+        .expect("Failed to create sender index.");
+
+    println!("Created sender index");
+
+    // receiver
+    let receiver_index = IndexModel::builder()
+        .keys(doc! {"receiver": 1})
+        .build();
+
+    collection
+        .create_index(receiver_index)
+        .await
+        .expect("Failed to created receiver index");
+
+    println!("Created the receiver index");
+
+    //amount
+    let amount_index = IndexModel::builder()
+        .keys(doc! {"amount": 1})
+        .build();
+
+    collection
+        .create_index(amount_index)
+        .await
+    .expect("Failder to created amount index");
+
+    println!("Created amount index");
+
+    //timestamp
+    let timestamp_index = IndexModel::builder()
+        .keys(doc! {"timestamp": -1})
+        .build();
+
+    collection
+        .create_index(timestamp_index)
+        .await
+        .expect("Failed to create timestamp index");
+
+    println!("Created timestamp index");
+
 
     // Router setup
     let user_request = Router::new()
