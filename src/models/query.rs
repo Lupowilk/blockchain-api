@@ -29,3 +29,25 @@ impl TransactionQuery {
         }
     }
 }
+
+//Unit tests module
+#[cfg(test)]
+mod tests {
+    use super::*; // Import everythign from the parent module
+
+    #[test]
+    fn test_limit_default() {
+        let tx_query_sample = TransactionQuery {
+            sender: None,
+            receiver: None,
+            amount: None,
+            limit: None,
+            offset: None,
+        };
+
+        let result = tx_query_sample.get_limit();
+            assert_eq!(result, 10);
+    }
+
+
+}
