@@ -33,8 +33,11 @@ impl TransactionQuery {
 //Unit tests module
 #[cfg(test)]
 mod tests {
+
     use super::*; // Import everythign from the parent module
 
+    // get limit tests
+    // Limit not provided, return 10 scenario
     #[test]
     fn test_limit_default() {
         let tx_query_sample = TransactionQuery {
@@ -49,5 +52,61 @@ mod tests {
             assert_eq!(result, 10);
     }
 
+    //Limit is 30
+    #[test]
+    fn test_limit_with_value() {
+        let tx_query_sample = TransactionQuery {
+            sender: None,
+            receiver: None,
+            amount: None,
+            limit: Some(30),
+            offset: None,
+        };
 
+        let result = tx_query_sample.get_limit();
+        assert_eq!(result, 30)
+    }
+
+    //Limit capped
+    #[test]
+    fn test_limit_capped() {
+        let tx_query_sample = TransactionQuery {
+            sender: None,
+            receiver: None,
+            amount: None,
+            limit: Some(60),
+            offset: None
+        };
+
+        let result = tx_query_sample.get_limit();
+        assert_eq!(result, 50)
+    }
+
+    #[test]
+    fn test_offset_default() {
+        let tx_query_sample = TransactionQuery {
+            sender: None,
+            receiver: None,
+            amount: None,
+            limit: None,
+            offset: None
+        };
+
+        let result = tx_query_sample.get_offset();
+        assert_eq!(result, 0)
+    }
+
+    #[test]
+    fn test_offset_with_value() {
+        let tx_query_sample = TransactionQuery {
+            sender: None,
+            receiver: None,
+            amount: None,
+            limit: None,
+            offset: Some(20)
+        };
+
+        let result = tx_query_sample.get_offset();
+        assert_eq!(result, 20)
+    }
 }
