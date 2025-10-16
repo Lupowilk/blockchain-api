@@ -11,6 +11,27 @@ use axum::{
 
 use mongodb::{Client, bson::doc, IndexModel};
 use serde_json::json;
+use utoipa::{OpenApi};
+use crate::models::transaction::CreateTransactionInput;
+use utoipa_swagger_ui::SwaggerUi;
+
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        transaction::create_transaction,
+        transaction::get_transactions,
+        transaction::get_transaction_by_id,
+        transaction::delete_transaction_by_id
+    ),
+    components(
+        schemas(Transaction, CreateTransactionInput)
+    ),
+    tags(
+        (name = "transaction", description = "Transaction management endpoints")
+    )
+)]
+struct ApiDoc;
 
 async fn root() -> Json<serde_json::Value> {
     Json(json!(
@@ -87,6 +108,7 @@ async fn main() {
     let user_request = Router::new()
         // stores the client in Axum's state manager
         .route("/", get(root))
+        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/transactions", get(transaction::get_transactions))
         .route("/transactions", post(transaction::create_transaction))
         .route(
