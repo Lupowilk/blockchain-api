@@ -37,6 +37,15 @@ impl IntoResponse for AppError {
 }
 
 // A function that takes a transaction from a user and saves it permanently to MongoDB
+#[utoipa::path(
+    post,
+    path = "/transactions",
+    request_body = CreateTransactionInput,
+    responses(
+        (status = 200, description = "Transaction created successfully"),
+        (status = 400, description = "invalid input")
+    )
+)]
 pub async fn create_transaction(State(client): State<Client>, Json(payload): Json<CreateTransactionInput>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
 
     // Amount validation
@@ -93,6 +102,13 @@ pub async fn create_transaction(State(client): State<Client>, Json(payload): Jso
 }
 
 //A function that returens all stored transacions
+#[utoipa::path(
+    get,
+    path = "/transactions",
+    responses(
+        (status = 200, description = "List of transactions retrieved successfully")
+    )
+)]
 pub async fn get_transactions(State(client): State<Client>, Query(params): Query<TransactionQuery>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
@@ -144,6 +160,15 @@ pub async fn get_transactions(State(client): State<Client>, Query(params): Query
 }
 
 // A function that returns a trasaction based on ID.
+#[utoipa::path(
+    get,
+    path = "/transactions/{id}",
+    responses(
+        (status = 200, description = "Transaction found"),
+        (status = 400, description = "invalid ID format, please provide 13612637127132"),
+        (status = 404, description = "Transaction not found")
+    )
+)]
 pub async fn get_transaction_by_id(State(client): State<Client>, Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id, // Succces - use the ObjectID
@@ -167,6 +192,15 @@ pub async fn get_transaction_by_id(State(client): State<Client>, Path(id): Path<
 }
 
 //A function that delets a transaction by ID.
+#[utoipa::path(
+    delete,
+    path = "/transactions/{id}",
+    responses(
+        (status = 200, description = "Transaction deleted successfully"),
+        (status = 400, description = "invalid ID format, please provide 13612637127132"),
+        (status = 404, description = "Transaction not found")
+    )
+)]
 pub async fn delete_transaction_by_id(State(client): State<Client>, Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let object_id = match ObjectId::parse_str(id) {
         Ok(id) => id,
