@@ -15,6 +15,8 @@ use utoipa::{OpenApi};
 use crate::models::transaction::CreateTransactionInput;
 use utoipa_swagger_ui::SwaggerUi;
 
+use tracing_subscriber::fmt;
+
 
 #[derive(OpenApi)]
 #[openapi(

@@ -16,3 +16,5 @@ futures-util = "0.3.31"
 rand = "0.8"
 utoipa = { version = "5.4", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0", features = ["axum"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["json", "env-filter"] }
