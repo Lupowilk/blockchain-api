@@ -15,8 +15,8 @@ use utoipa::{OpenApi};
 use crate::models::transaction::CreateTransactionInput;
 use utoipa_swagger_ui::SwaggerUi;
 
-use tracing_subscriber::fmt;
-
+use tracing_subscriber::EnvFilter;
+use tracing::info;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -35,6 +35,7 @@ use tracing_subscriber::fmt;
 )]
 struct ApiDoc;
 
+
 async fn root() -> Json<serde_json::Value> {
     Json(json!(
         {
@@ -47,7 +48,13 @@ async fn root() -> Json<serde_json::Value> {
 
 #[tokio::main]
 async fn main() {
-    // Client sdetup
+    //Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .json()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
+    // Client setup
     let client = Client::with_uri_str("mongodb://localhost:27017")
         .await
         .expect("Failed to connect to MongoDB");
@@ -67,7 +74,7 @@ async fn main() {
         .await
         .expect("Failed to create sender index.");
 
-    println!("Created sender index");
+    info!("Created sender index");
 
     // receiver
     let receiver_index = IndexModel::builder()
@@ -79,7 +86,7 @@ async fn main() {
         .await
         .expect("Failed to created receiver index");
 
-    println!("Created the receiver index");
+    info!("Created the receiver index");
 
     //amount
     let amount_index = IndexModel::builder()
@@ -91,7 +98,7 @@ async fn main() {
         .await
     .expect("Failder to created amount index");
 
-    println!("Created amount index");
+    info!("Created amount index");
 
     //timestamp
     let timestamp_index = IndexModel::builder()
@@ -103,7 +110,7 @@ async fn main() {
         .await
         .expect("Failed to create timestamp index");
 
-    println!("Created timestamp index");
+    info!("Created timestamp index");
 
 
     // Router setup
@@ -126,6 +133,6 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
     //Start the server
-    println!("Server starting on http://localhost:3000");
+    info!("Server starting on http://localhost:3000");
     axum::serve(listener, user_request).await.unwrap();
 }
