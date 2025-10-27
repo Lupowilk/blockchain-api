@@ -11,6 +11,7 @@ use mongodb::options::FindOptions;
 use rand::Rng;
 use serde_json::json;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::{info, warn};
 
 //Enum for handling errors
 pub enum AppError {
@@ -48,23 +49,35 @@ impl IntoResponse for AppError {
 )]
 pub async fn create_transaction(State(client): State<Client>, Json(payload): Json<CreateTransactionInput>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
 
+    //Log Request Arrival
+    info!(
+        sender = %payload.sender,
+        receiver = %payload.receiver,
+        amount = payload.amount,
+        "Create transaction request received"
+    );
+
     // Amount validation
     if payload.amount == 0 {
+        warn!(amount = payload.amount, "Validation failed: amount is zero");
          return Err(AppError::BadRequest("Amount must be greater than 0".to_string()));
     }
 
     // Sender validation
     if payload.sender.trim().is_empty() == true {
+        warn!(sender = %payload.sender, "Validation failed: no sender address provided");
         return Err(AppError::BadRequest("You must provide the sender address".to_string()));
     }
 
     // Receiver validation
     if payload.receiver.trim().is_empty() == true {
+        warn!(receiver = %payload.receiver, "Validation failed: no receiver address provided");
         return Err(AppError::BadRequest("Please provide a receiver address".to_string()));
     }
 
     // Same address validation
     if payload.sender.trim() == payload.receiver.trim() {
+        warn!(sender = %payload.sender, receiver = %payload.receiver, "Validation failed: same receiver and sender addresses");
         return Err(AppError::BadRequest("Cannot send to yourself".to_string()));
     }
     // This code only runs if amount is not 0
