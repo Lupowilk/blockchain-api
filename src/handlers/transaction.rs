@@ -103,11 +103,23 @@ pub async fn create_transaction(State(client): State<Client>, Json(payload): Jso
         timestamp: tx_timestamp,
     };
     // 3. Insert the biult transaction
+    info!(
+        id = tx_id,
+        sender = %payload.sender,
+        receiver = %payload.receiver,
+        amount = payload.amount,
+        timestamp = tx_timestamp,
+        "Inserting transaction into the database"
+    );
     collection
         .insert_one(transaction_to_save.clone())
         .await
         .map_err(|e| AppError::Database(format!("Failed to save transaction: {}", e)))?;
 
+    info!(
+        id = %transaction_to_save.id,
+        "Transaction insert succesfully"
+    );
     Ok((StatusCode::OK, Json(json!({
         "message":"Transaction created successfully",
         "transaction": payload
