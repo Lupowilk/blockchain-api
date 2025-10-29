@@ -135,6 +135,16 @@ pub async fn create_transaction(State(client): State<Client>, Json(payload): Jso
     )
 )]
 pub async fn get_transactions(State(client): State<Client>, Query(params): Query<TransactionQuery>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+    //structured logging for request arrival
+    info!(
+        limit = params.get_limit(),
+        offset = params.get_offset(),
+        sender = ?params.sender,
+        receiver = ?params.receiver,
+        amount = ?params.amount,
+        "Get transaction request received"
+    );
+
     let database = client.database("blockchain");
     let collection = database.collection("transactions");
 
@@ -156,13 +166,21 @@ pub async fn get_transactions(State(client): State<Client>, Query(params): Query
     }
 
 
-    // Step 2: Build FindOptions
+    // Step 2: Build FindOptions for pagination
     let find_options = FindOptions::builder()
         .limit(limit as i64)
         .skip(offset)
         .build();
 
     // Step 3: Use them in find
+    // Logging before databse query
+    info!(
+        filter = ?filter,
+        limit = limit,
+        offset = offset,
+        "Querying databse for transactions"
+    );
+
     let mut cursor = collection
         .find(filter)
         .with_options(find_options)
@@ -176,7 +194,13 @@ pub async fn get_transactions(State(client): State<Client>, Query(params): Query
             Ok(transaction) => transaction_data.push(transaction),
             Err(_) => break,
         }
+
     }
+
+    info!(
+        count = transaction_data.len(),
+        "Transactions retrived successfully"
+    );
 
     Ok((StatusCode::OK, Json(json!( {
         "transactions":transaction_data,
