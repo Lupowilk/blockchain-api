@@ -219,22 +219,27 @@ pub async fn get_transactions(State(client): State<Client>, Query(params): Query
     )
 )]
 pub async fn get_transaction_by_id(State(client): State<Client>, Path(id): Path<String>) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
-    let object_id = match ObjectId::parse_str(id) {
+    info!(id = %id, "Get transaction by ID request received");
+    let object_id = match ObjectId::parse_str(&id) {
         Ok(id) => id, // Succces - use the ObjectID
         Err(_) => {
+            warn!(id = %id, "Invalid ID format");
             return Err(AppError::BadRequest("Invalid ID format".to_string()));
         }
     };
     let database = client.database("blockchain");
     let collection: mongodb::Collection<Transaction> = database.collection("transactions");
+    info!(object_id = %object_id, "Querying database for transaction");
     let transaction_by_id = match collection.find_one(doc! {"_id": object_id}).await
         .map_err(|e| AppError::Database(format!("Failed to query transaction: {}", e)))? {
         Some(transaction) => transaction,
         None => {
+            warn!(object_id = %object_id, "Transaction not found");
             return Err(AppError::NotFound("Transaction not found".to_string()));
         }
     };
 
+    info!(transaction_id = %transaction_by_id.id, "Transaction received succesfully");
     Ok ((StatusCode::OK, Json(json!({
         "transaction": transaction_by_id
     }))))
